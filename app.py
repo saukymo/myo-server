@@ -38,17 +38,20 @@ def on_unsubscribe(device_id):
 @socketio.on('register')
 def on_register(device_id):
 	device_list.append(device_id)
+	print(device_list)
 
 
 @socketio.on('deregister')
 def on_deregister(device_id):
 	device_list.remove(device_id)
+	print(device_list)
 
 
 @socketio.on('emg')
 def on_emg(data):
 	device_id = data.get('device_id')
 	emg_data = data.get('emg')
+	print("receive %s from device %s" % (emg_data, device_id))
 	send(emg_data, room = device_id)
 
 
