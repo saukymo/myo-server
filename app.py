@@ -1,5 +1,5 @@
 from flask import Flask, jsonify
-from flask_socketio import SocketIO, join_room, leave_room
+from flask_socketio import SocketIO, join_room, leave_room, emit
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -26,13 +26,11 @@ def on_logout(app_id):
 @socketio.on('subscribe')
 def on_subscribe(device_id):
 	join_room(device_id)
-	send("has subscribed device %d." % device_id)
 
 
 @socketio.on('unsubscribe')
 def on_unsubscribe(device_id):
 	leave_room(device_id)
-	send("stop subscribed device %d." % device_id)
 
 
 @socketio.on('register')
@@ -52,7 +50,7 @@ def on_emg(data):
 	device_id = data.get('device_id')
 	emg_data = data.get('emg')
 	print("receive %s from device %s" % (emg_data, device_id))
-	send(emg_data, room = device_id)
+	emit("emg", emg_data, room = device_id)
 
 
 @socketio.on('message')
