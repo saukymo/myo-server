@@ -15,7 +15,7 @@ def index():
 @socketio.on('login')
 def on_login(app_id):
 	print("%s logged in." % app_id)
-	send({'devices:': device_list})
+	emit("login", {'devices': device_list})
 
 
 @socketio.on('logout')
@@ -57,7 +57,7 @@ def on_emg(data):
 
 @socketio.on('message')
 def handle_message(message):
-    print('received message: ' + message)
+    print('received message: %s' % message)
 
     
 if __name__ == '__main__':
