@@ -5,7 +5,7 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 
-device_list = []
+device_list = [2, 3]
 app_list = []
 
 @app.route('/')
@@ -63,9 +63,11 @@ def handle_message(message):
     print('received message: %s' % message)
 
 @socketio.on('alert')
-def send_alert(device_id):
- 	for app_id in app_list:
- 		emit("alert", device_id, room=app_id)
+def send_alert(alert_info):
+    print('-----------device: %d alerted--------------' % (alert_info.get('status')))
+    print(app_list)
+    for app_id in app_list:
+        emit("alert", alert_info, room=app_id)
 
 if __name__ == '__main__':
     socketio.run(app)
