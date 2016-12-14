@@ -6,6 +6,7 @@ socketio = SocketIO(app)
 
 
 device_list = []
+app_list = []
 
 @app.route('/')
 def index():
@@ -14,12 +15,16 @@ def index():
 
 @socketio.on('login')
 def on_login(app_id):
+	join_room(app_id)
+	app_list.append(app_id)
 	print("%s logged in." % app_id)
 	emit("login", {'devices': device_list})
 
 
 @socketio.on('logout')
 def on_logout(app_id):
+	leave_room(app_id)
+	app_list.remove(app_id)
 	print("%s logged out." % app_id)
 
 
@@ -50,13 +55,17 @@ def on_emg(data):
 	device_id = data.get('device_id')
 	emg_data = data.get('emg')
 	print("receive %s from device %s" % (emg_data, device_id))
-	emit("emg", emg_data, room = device_id)
+	emit("emg", emg_data, room=device_id)
 
 
 @socketio.on('message')
 def handle_message(message):
     print('received message: %s' % message)
 
-    
+@socketio.on('alert')
+ def send_alert(device_id):
+ 	for app_id in app_list:
+ 		emit("alert", device_id, room=app_id)
+ 		
 if __name__ == '__main__':
     socketio.run(app)
