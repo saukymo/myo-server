@@ -63,9 +63,9 @@ def handle_message(message):
     print('received message: %s' % message)
 
 @socketio.on('alert')
- def send_alert(device_id):
+def send_alert(device_id):
  	for app_id in app_list:
  		emit("alert", device_id, room=app_id)
- 		
+
 if __name__ == '__main__':
     socketio.run(app)
