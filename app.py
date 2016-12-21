@@ -23,7 +23,7 @@ def on_login(app_id):
     join_room(app_id)
     app_list.append(app_id)
     print("%s logged in." % app_id)
-    emit("login", {'devices': device_list})
+    emit("device_list", {'devices': device_list})
 
 
 def send_device_list():
@@ -63,6 +63,7 @@ def on_deregister(device_id):
     device_list.remove(device_id)
     device_history.pop(device_id, None)
     print(device_list)
+    send_device_list()
 
 
 @socketio.on('emg')
