@@ -4,8 +4,8 @@ from classifier import NNClassifier
 from collections import Counter, deque
 
 app = Flask(__name__)
-socketio = SocketIO(app)
-kcls = NNClassifier()
+socket_io = SocketIO(app)
+knn_classifier = NNClassifier()
 
 device_list = []
 device_history = {}
@@ -18,7 +18,7 @@ def index():
     return jsonify(devices=device_list)
 
 
-@socketio.on('login')
+@socket_io.on('login')
 def on_login(app_id):
     join_room(app_id)
     app_list.append(app_id)
@@ -31,34 +31,34 @@ def send_device_list():
         emit("device_list", {'devices': device_list}, room=app_id)
 
 
-@socketio.on('logout')
+@socket_io.on('logout')
 def on_logout(app_id):
     leave_room(app_id)
     app_list.remove(app_id)
     print("%s logged out." % app_id)
 
 
-@socketio.on('subscribe')
+@socket_io.on('subscribe')
 def on_subscribe(device_id):
     join_room(device_id)
 
 
-@socketio.on('unsubscribe')
+@socket_io.on('unsubscribe')
 def on_unsubscribe(device_id):
     leave_room(device_id)
 
 
-@socketio.on('register')
+@socket_io.on('register')
 def on_register(device_id):
     device_list.append(device_id)
-    # deque(iterable, maxlen)
+    # deque(iterable, max_length)
     device_history[device_id] = deque([3] * 25, 25)
     device_last_pose[device_id] = 3
     print(device_list)
     send_device_list()
 
 
-@socketio.on('deregister')
+@socket_io.on('deregister')
 def on_deregister(device_id):
     device_list.remove(device_id)
     device_history.pop(device_id, None)
@@ -66,11 +66,11 @@ def on_deregister(device_id):
     send_device_list()
 
 
-@socketio.on('emg')
+@socket_io.on('emg')
 def on_emg(data):
     device_id = data.get('device_id')
     emg_data = data.get('emg')
-    device_history.get(device_id).append(kcls.classify(emg_data))
+    device_history.get(device_id).append(knn_classifier.classify(emg_data))
     # most_common(k) return k most common elements in list
     # return (elements, count)
     r, n = Counter(device_history.get(device_id)).most_common(1)[0]
@@ -81,12 +81,12 @@ def on_emg(data):
     emit("emg", emg_data, room=device_id)
 
 
-@socketio.on('message')
+@socket_io.on('message')
 def handle_message(message):
     print('received message: %s' % message)
 
 
-@socketio.on('alert')
+@socket_io.on('alert')
 def send_alert(alert_info):
     print('-----------device: %d alerted--------------' % (alert_info.get('status')))
     print(app_list)
@@ -94,4 +94,4 @@ def send_alert(alert_info):
         emit("alert", alert_info, room=app_id)
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socket_io.run(app)
