@@ -1,5 +1,8 @@
+import numpy as np
+import json
+
 from flask import Flask, jsonify
-from flask_socketio import SocketIO, join_room, leave_room, emit
+from flask_socketio import SocketIO, join_room, leave_room, emit, send
 from classifier import NNClassifier
 from collections import Counter, deque
 
@@ -7,7 +10,7 @@ app = Flask(__name__)
 socket_io = SocketIO(app)
 knn_classifier = NNClassifier()
 
-device_list = []
+device_list = [2, 3, 4]
 device_history = {}
 device_last_pose = {}
 app_list = []
@@ -21,8 +24,10 @@ def index():
 @socket_io.on('login')
 def on_login(app_id):
     join_room(app_id)
-    app_list.append(app_id)
+    if app_id not in app_list:
+        app_list.append(app_id)
     print("%s logged in." % app_id)
+    send("success")
     emit("device_list", {'devices': device_list})
 
 
@@ -40,23 +45,29 @@ def on_logout(app_id):
 
 @socket_io.on('subscribe')
 def on_subscribe(device_id):
+    print("Subscribe %d" % device_id)
     join_room(device_id)
 
 
 @socket_io.on('unsubscribe')
 def on_unsubscribe(device_id):
+    print("Unsubscribe %d" % device_id)
     leave_room(device_id)
 
 
 @socket_io.on('register')
 def on_register(device_id):
-    device_list.append(device_id)
+    if device_id not in device_list:
+        device_list.append(device_id)
     # deque(iterable, max_length)
-    device_history[device_id] = deque([3] * 25, 25)
-    device_last_pose[device_id] = 3
+    device_init(device_id)
     print(device_list)
     send_device_list()
 
+
+def device_init(device_id):
+    device_history[device_id] = deque([3] * 25, 25)
+    device_last_pose[device_id] = 3
 
 @socket_io.on('deregister')
 def on_deregister(device_id):
@@ -65,20 +76,29 @@ def on_deregister(device_id):
     print(device_list)
     send_device_list()
 
-
 @socket_io.on('emg')
 def on_emg(data):
     device_id = data.get('device_id')
     emg_data = data.get('emg')
-    device_history.get(device_id).append(knn_classifier.classify(emg_data))
+
+    if device_id not in device_list:
+        device_list.append(device_id)
+        device_init(device_id)
+
+    proba = knn_classifier.classify(emg_data)
+    pose = np.argmax(proba)
+    # print emg_data, pose
+
+    device_history.get(device_id).append(pose)
     # most_common(k) return k most common elements in list
     # return (elements, count)
+
     r, n = Counter(device_history.get(device_id)).most_common(1)[0]
-    if n > 12 and r != device_last_pose.get(device_id):
-        send_alert({'status': r == 2, 'device_id': device_id})
+    if n > 12 and r != device_last_pose.get(device_id, 3):
+        send_alert({'status': int(r) == 2, 'device_id': device_id})
     device_last_pose[device_id] = r
     # print("receive %s from device %s" % (emg_data, device_id))
-    emit("emg", emg_data, room=device_id)
+    emit("emg", {'emg':emg_data, 'proba':proba[2]}, room=device_id)
 
 
 @socket_io.on('message')
@@ -86,12 +106,11 @@ def handle_message(message):
     print('received message: %s' % message)
 
 
-@socket_io.on('alert')
 def send_alert(alert_info):
     print('-----------device: %d alerted--------------' % (alert_info.get('status')))
-    print(app_list)
+    print("App list:", app_list)
     for app_id in app_list:
         emit("alert", alert_info, room=app_id)
 
 if __name__ == '__main__':
-    socket_io.run(app)
+    socket_io.run(app, use_reloader=True, host='0.0.0.0')

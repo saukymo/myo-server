@@ -33,4 +33,4 @@ class NNClassifier:
     def classify(self, d):
         if self.X.shape[0] < K * SUBSAMPLE:
             return 0
-        return int(self.nn.predict(np.array(d).reshape(1, -1))[0])
+        return self.nn.predict_proba(np.array(d).reshape(1, -1))[0]
